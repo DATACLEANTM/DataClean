@@ -1,0 +1,62 @@
+### Health Check
+GET http://localhost:3001/health
+
+### Registro
+POST http://localhost:3001/api/auth/register
+Content-Type: application/json
+
+{
+  "name": "David Test",
+  "email": "david@dataclean.com",
+  "password": "123456"
+}
+
+### Login
+POST http://localhost:3001/api/auth/login
+Content-Type: application/json
+
+{
+  "email": "david@dataclean.com",
+  "password": "123456"
+}
+
+### Detectar columnas
+POST http://localhost:3001/api/mapping/columns
+Content-Type: application/json
+Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ1c2VySWQiOiJjbXBlb3R2eHIwMDAwc2w4b3N1aGF4ZW95IiwiZW1haWwiOiJkYXZpZEBkYXRhY2xlYW4uY29tIiwicm9sZSI6InVzZXIiLCJpYXQiOjE3NzkzMjAwODIsImV4cCI6MTc3OTkyNDg4Mn0.IRr39YEEdjTIcRPEs1aemh1F6PbruA9NRMFF4BQYtyQ
+
+{
+  "columns": ["nombre", "correo", "telefono", "fecha_nac", "ciudad", "precio"]
+}
+
+### Confirmar mappings
+POST http://localhost:3001/api/mapping/confirm
+Content-Type: application/json
+Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ1c2VySWQiOiJjbXBlb3R2eHIwMDAwc2w4b3N1aGF4ZW95IiwiZW1haWwiOiJkYXZpZEBkYXRhY2xlYW4uY29tIiwicm9sZSI6InVzZXIiLCJpYXQiOjE3NzkzMjAwODIsImV4cCI6MTc3OTkyNDg4Mn0.IRr39YEEdjTIcRPEs1aemh1F6PbruA9NRMFF4BQYtyQ
+
+{
+  "fileId": "cmpepk1le0001slo4bz1k4t38",
+  "mappings": [
+    { "originalColumnName": "nombre", "mappedField": "nombre" },
+    { "originalColumnName": "correo", "mappedField": "email" },
+    { "originalColumnName": "telefono", "mappedField": "telefono" },
+    { "originalColumnName": "ciudad", "mappedField": "ciudad" },
+    { "originalColumnName": "precio", "mappedField": "precio" }
+  ]
+}
+
+### Historial de uploads
+GET http://localhost:3001/api/upload/history
+Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ1c2VySWQiOiJjbXBlb3R2eHIwMDAwc2w4b3N1aGF4ZW95IiwiZW1haWwiOiJkYXZpZEBkYXRhY2xlYW4uY29tIiwicm9sZSI6InVzZXIiLCJpYXQiOjE3NzkzMjAwODIsImV4cCI6MTc3OTkyNDg4Mn0.IRr39YEEdjTIcRPEs1aemh1F6PbruA9NRMFF4BQYtyQ
+
+### Subir archivo CSV
+POST http://localhost:3001/api/upload
+Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ1c2VySWQiOiJjbXBlb3R2eHIwMDAwc2w4b3N1aGF4ZW95IiwiZW1haWwiOiJkYXZpZEBkYXRhY2xlYW4uY29tIiwicm9sZSI6InVzZXIiLCJpYXQiOjE3NzkzMjAwODIsImV4cCI6MTc3OTkyNDg4Mn0.IRr39YEEdjTIcRPEs1aemh1F6PbruA9NRMFF4BQYtyQ
+Content-Type: multipart/form-data; boundary=boundary
+
+--boundary
+Content-Disposition: form-data; name="file"; filename="test.csv"
+Content-Type: text/csv
+
+< ../uploads/test.csv
+--boundary--

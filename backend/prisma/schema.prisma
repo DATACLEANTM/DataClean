@@ -1,0 +1,95 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id        String   @id @default(cuid())
+  email     String   @unique
+  password  String
+  name      String
+  role      String   @default("user")
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  uploads        UploadedFile[]
+  columnMappings ColumnMapping[]
+}
+
+model UploadedFile {
+  id           String   @id @default(cuid())
+  filename     String
+  originalName String
+  size         Int
+  rowCount     Int      @default(0)
+  uploadedAt   DateTime @default(now())
+
+  userId          String
+  user            User              @relation(fields: [userId], references: [id])
+  columnMappings  ColumnMapping[]
+  records         Record[]
+  detectedErrors  DetectedError[]
+  analysisHistory AnalysisHistory[]
+}
+
+model ColumnMapping {
+  id                 String   @id @default(cuid())
+  originalColumnName String
+  mappedField        String
+  createdAt          DateTime @default(now())
+
+  fileId String
+  file   UploadedFile @relation(fields: [fileId], references: [id])
+  userId String
+  user   User         @relation(fields: [userId], references: [id])
+}
+
+model Record {
+  id        String   @id @default(cuid())
+  rowNumber Int
+  data      String
+  createdAt DateTime @default(now())
+
+  fileId         String
+  file           UploadedFile    @relation(fields: [fileId], references: [id])
+  detectedErrors DetectedError[]
+}
+
+model ErrorType {
+  id          String @id @default(cuid())
+  name        String @unique
+  description String
+  severity    String
+
+  detectedErrors DetectedError[]
+}
+
+model DetectedError {
+  id            String   @id @default(cuid())
+  fieldName     String
+  detectedValue String
+  message       String
+  detectedAt    DateTime @default(now())
+
+  fileId      String
+  file        UploadedFile @relation(fields: [fileId], references: [id])
+  recordId    String
+  record      Record       @relation(fields: [recordId], references: [id])
+  errorTypeId String
+  errorType   ErrorType    @relation(fields: [errorTypeId], references: [id])
+}
+
+model AnalysisHistory {
+  id           String   @id @default(cuid())
+  totalRecords Int
+  totalErrors  Int
+  qualityScore Float
+  analyzedAt   DateTime @default(now())
+
+  fileId String
+  file   UploadedFile @relation(fields: [fileId], references: [id])
+}
