@@ -3,7 +3,7 @@ generator client {
 }
 
 datasource db {
-  provider = "sqlite"
+  provider = "postgresql"
   url      = env("DATABASE_URL")
 }
 
@@ -12,25 +12,24 @@ model User {
   email     String   @unique
   password  String
   name      String
-  role      String   @default("user")
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
-  uploads        UploadedFile[]
-  columnMappings ColumnMapping[]
+  uploadedFiles UploadedFile[]
 }
 
 model UploadedFile {
   id           String   @id @default(cuid())
+  userId       String
   filename     String
   originalName String
   size         Int
-  rowCount     Int      @default(0)
+  rowCount     Int?
   uploadedAt   DateTime @default(now())
 
-  userId          String
-  user            User              @relation(fields: [userId], references: [id])
-  columnMappings  ColumnMapping[]
+  user User @relation(fields: [userId], references: [id])
+
+  mappings        ColumnMapping[]
   records         Record[]
   detectedErrors  DetectedError[]
   analysisHistory AnalysisHistory[]
@@ -38,30 +37,29 @@ model UploadedFile {
 
 model ColumnMapping {
   id                 String   @id @default(cuid())
+  fileId             String
   originalColumnName String
   mappedField        String
   createdAt          DateTime @default(now())
 
-  fileId String
-  file   UploadedFile @relation(fields: [fileId], references: [id])
-  userId String
-  user   User         @relation(fields: [userId], references: [id])
+  file UploadedFile @relation(fields: [fileId], references: [id])
 }
 
 model Record {
   id        String   @id @default(cuid())
+  fileId    String
   rowNumber Int
-  data      String
+  data      Json
   createdAt DateTime @default(now())
 
-  fileId         String
-  file           UploadedFile    @relation(fields: [fileId], references: [id])
-  detectedErrors DetectedError[]
+  file UploadedFile @relation(fields: [fileId], references: [id])
+
+  errors DetectedError[]
 }
 
 model ErrorType {
-  id          String @id @default(cuid())
-  name        String @unique
+  id          String   @id @default(cuid())
+  name        String
   description String
   severity    String
 
@@ -70,26 +68,26 @@ model ErrorType {
 
 model DetectedError {
   id            String   @id @default(cuid())
-  fieldName     String
-  detectedValue String
+  fileId        String
+  recordId      String?
+  errorTypeId   String
+  fieldName     String?
+  detectedValue String?
   message       String
   detectedAt    DateTime @default(now())
 
-  fileId      String
-  file        UploadedFile @relation(fields: [fileId], references: [id])
-  recordId    String
-  record      Record       @relation(fields: [recordId], references: [id])
-  errorTypeId String
-  errorType   ErrorType    @relation(fields: [errorTypeId], references: [id])
+  file      UploadedFile @relation(fields: [fileId], references: [id])
+  record    Record?      @relation(fields: [recordId], references: [id])
+  errorType ErrorType    @relation(fields: [errorTypeId], references: [id])
 }
 
 model AnalysisHistory {
   id           String   @id @default(cuid())
-  totalRecords Int
-  totalErrors  Int
-  qualityScore Float
-  analyzedAt   DateTime @default(now())
+  fileId        String
+  totalRecords  Int
+  totalErrors   Int
+  qualityScore  Float
+  analyzedAt    DateTime @default(now())
 
-  fileId String
-  file   UploadedFile @relation(fields: [fileId], references: [id])
+  file UploadedFile @relation(fields: [fileId], references: [id])
 }
