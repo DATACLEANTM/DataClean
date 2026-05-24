@@ -31,7 +31,7 @@ export class AuthService {
         return { user: userWithoutPassword, token };
     }
 
-    private generateToken(user: { id: string; email: string; role: string }) {
+    private generateToken(user: { id: number; email: string; role: string }) {
         const payload: JwtPayload = { userId: user.id, email: user.email, role: user.role };
         return jwt.sign(payload, env.jwtSecret, { expiresIn: env.jwtExpiresIn } as object);
     }

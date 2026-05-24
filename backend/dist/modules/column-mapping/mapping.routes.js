@@ -1,0 +1,11 @@
+"use strict";
+Object.defineProperty(exports, "__esModule", { value: true });
+const express_1 = require("express");
+const mapping_controller_1 = require("./mapping.controller");
+const auth_middleware_1 = require("../../middleware/auth.middleware");
+const router = (0, express_1.Router)();
+const mappingController = new mapping_controller_1.MappingController();
+router.post('/columns', auth_middleware_1.authMiddleware, (req, res) => mappingController.detectColumns(req, res));
+router.post('/confirm', auth_middleware_1.authMiddleware, (req, res) => mappingController.confirmMappings(req, res));
+router.get('/:fileId', auth_middleware_1.authMiddleware, (req, res) => mappingController.getMappings(req, res));
+exports.default = router;

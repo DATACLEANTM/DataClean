@@ -6,7 +6,7 @@ import * as XLSX from 'xlsx';
 import { prisma } from '../../config/database';
 
 export class UploadService {
-    async processFile(file: Express.Multer.File, userId: string) {
+    async processFile(file: Express.Multer.File, userId: number) {
         const ext = path.extname(file.originalname).toLowerCase();
         let columns: string[] = [];
         let rowCount = 0;
@@ -67,7 +67,7 @@ export class UploadService {
         return { columns, rowCount };
     }
 
-    async getHistory(userId: string) {
+    async getHistory(userId: number) {
         return prisma.uploadedFile.findMany({
             where: { userId },
             orderBy: { uploadedAt: 'desc' },

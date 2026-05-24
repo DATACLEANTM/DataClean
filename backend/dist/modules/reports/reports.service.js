@@ -1,14 +1,14 @@
+"use strict";
+Object.defineProperty(exports, "__esModule", { value: true });
+exports.getAnalysisHistory = exports.getFileErrors = void 0;
 // src/modules/reports/reports.service.ts
-import { prisma } from '../../config/database';
-import { ErrorDetail, AnalysisHistoryRecord } from './reports.types';
-
-export const getFileErrors = async (fileId: number): Promise<ErrorDetail[]> => {
-    const file = await prisma.uploadedFile.findUnique({ where: { id: fileId } });
+const database_1 = require("../../config/database");
+const getFileErrors = async (fileId) => {
+    const file = await database_1.prisma.uploadedFile.findUnique({ where: { id: fileId } });
     if (!file) {
         throw new Error('FILE_NOT_FOUND');
     }
-
-    const errors = await prisma.detectedError.findMany({
+    const errors = await database_1.prisma.detectedError.findMany({
         where: { fileId: fileId },
         include: {
             errorType: true,
@@ -18,7 +18,6 @@ export const getFileErrors = async (fileId: number): Promise<ErrorDetail[]> => {
             record: { rowNumber: 'asc' }
         }
     });
-
     // Mapeamos el resultado complejo de Prisma a nuestra interfaz limpia
     return errors.map(err => ({
         id: err.id,
@@ -30,10 +29,10 @@ export const getFileErrors = async (fileId: number): Promise<ErrorDetail[]> => {
         severity: err.errorType?.severity || 'WARNING'
     }));
 };
-
-export const getAnalysisHistory = async (): Promise<AnalysisHistoryRecord[]> => {
+exports.getFileErrors = getFileErrors;
+const getAnalysisHistory = async () => {
     // Consultamos el historial global de la organización
-    const history = await prisma.analysisHistory.findMany({
+    const history = await database_1.prisma.analysisHistory.findMany({
         include: {
             file: true
         },
@@ -41,7 +40,6 @@ export const getAnalysisHistory = async (): Promise<AnalysisHistoryRecord[]> => 
             analyzedAt: 'desc'
         }
     });
-
     return history.map(h => ({
         id: h.id,
         fileId: h.fileId,
@@ -52,3 +50,4 @@ export const getAnalysisHistory = async (): Promise<AnalysisHistoryRecord[]> => 
         analyzedAt: h.analyzedAt
     }));
 };
+exports.getAnalysisHistory = getAnalysisHistory;

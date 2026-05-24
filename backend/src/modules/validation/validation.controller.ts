@@ -14,13 +14,13 @@ const validationService = new ValidationService();
  */
 export const runValidation = async (req: Request, res: Response) => {
   try {
-    const fileId = parseInt(req.params.fileId as string);
-    const { mappings }: ValidationRunRequest = req.body;
+    const fileId = parseInt(req.params.fileId as string, 10);
 
-    // Validar que el fileId sea válido
-    if (isNaN(fileId)) {
-      return res.status(400).json({ error: 'fileId debe ser un número válido' });
+    if (!fileId || isNaN(fileId)) {
+      return res.status(400).json({ error: 'fileId debe ser un ID numérico válido' });
     }
+
+    const { mappings }: ValidationRunRequest = req.body;
 
     // Validar que existan mappings
     if (!mappings || mappings.length === 0) {
@@ -58,10 +58,10 @@ export const runValidation = async (req: Request, res: Response) => {
  */
 export const getValidationResults = async (req: Request, res: Response) => {
   try {
-    const fileId = parseInt(req.params.fileId as string);
+    const fileId = parseInt(req.params.fileId as string, 10);
 
-    if (isNaN(fileId)) {
-      return res.status(400).json({ error: 'fileId debe ser un número válido' });
+    if (!fileId || isNaN(fileId)) {
+      return res.status(400).json({ error: 'fileId debe ser un ID numérico válido' });
     }
 
     // TODO: Obtener resultados desde analysis_history y detected_errors
@@ -101,10 +101,10 @@ export const getValidationResults = async (req: Request, res: Response) => {
  */
 export const getValidationErrors = async (req: Request, res: Response) => {
   try {
-    const fileId = parseInt(req.params.fileId as string);
+    const fileId = parseInt(req.params.fileId as string, 10);
 
-    if (isNaN(fileId)) {
-      return res.status(400).json({ error: 'fileId debe ser un número válido' });
+    if (!fileId || isNaN(fileId)) {
+      return res.status(400).json({ error: 'fileId debe ser un ID numérico válido' });
     }
 
     // TODO: Obtener errores desde detected_errors con JOIN a records

@@ -1,18 +1,18 @@
-// src/modules/reports/reports.controller.ts
-import { Request, Response } from 'express';
-import { getFileErrors, getAnalysisHistory } from './reports.service';
-
-export const getErrorsReport = async (req: Request, res: Response): Promise<void> => {
+"use strict";
+Object.defineProperty(exports, "__esModule", { value: true });
+exports.getHistoryReport = exports.getErrorsReport = void 0;
+const reports_service_1 = require("./reports.service");
+const getErrorsReport = async (req, res) => {
     try {
-        const fileId = parseInt(req.params.fileId as string, 10);
+        const fileId = parseInt(req.params.fileId, 10);
         if (!fileId || isNaN(fileId)) {
             res.status(400).json({ error: 'El parámetro fileId debe ser un ID numérico válido.' });
             return;
         }
-
-        const errors = await getFileErrors(fileId);
+        const errors = await (0, reports_service_1.getFileErrors)(fileId);
         res.status(200).json(errors);
-    } catch (error: any) {
+    }
+    catch (error) {
         if (error.message === 'FILE_NOT_FOUND') {
             res.status(404).json({ error: 'Archivo no encontrado.' });
             return;
@@ -21,13 +21,15 @@ export const getErrorsReport = async (req: Request, res: Response): Promise<void
         res.status(500).json({ error: 'Error interno al consultar los detalles de errores.' });
     }
 };
-
-export const getHistoryReport = async (req: Request, res: Response): Promise<void> => {
+exports.getErrorsReport = getErrorsReport;
+const getHistoryReport = async (req, res) => {
     try {
-        const history = await getAnalysisHistory();
+        const history = await (0, reports_service_1.getAnalysisHistory)();
         res.status(200).json(history);
-    } catch (error) {
+    }
+    catch (error) {
         console.error('Error al consultar el historial:', error);
         res.status(500).json({ error: 'Error interno al consultar el historial de auditorías.' });
     }
 };
+exports.getHistoryReport = getHistoryReport;

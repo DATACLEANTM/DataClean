@@ -1,0 +1,30 @@
+"use strict";
+var __importDefault = (this && this.__importDefault) || function (mod) {
+    return (mod && mod.__esModule) ? mod : { "default": mod };
+};
+Object.defineProperty(exports, "__esModule", { value: true });
+const express_1 = __importDefault(require("express"));
+const cors_1 = __importDefault(require("cors"));
+const env_1 = require("./config/env");
+const auth_routes_1 = __importDefault(require("./modules/auth/auth.routes"));
+const upload_routes_1 = __importDefault(require("./modules/upload/upload.routes"));
+const mapping_routes_1 = __importDefault(require("./modules/column-mapping/mapping.routes"));
+const validation_routes_1 = __importDefault(require("./modules/validation/validation.routes"));
+const analytics_routes_1 = __importDefault(require("./modules/analytics/analytics.routes"));
+const reports_routes_1 = __importDefault(require("./modules/reports/reports.routes"));
+const error_middleware_1 = require("./middleware/error.middleware");
+const app = (0, express_1.default)();
+app.use((0, cors_1.default)({ origin: env_1.env.frontendUrl, credentials: true }));
+app.use(express_1.default.json());
+app.use(express_1.default.urlencoded({ extended: true }));
+app.get('/health', (_req, res) => {
+    res.json({ status: 'ok', timestamp: new Date().toISOString() });
+});
+app.use('/api/auth', auth_routes_1.default);
+app.use('/api/upload', upload_routes_1.default);
+app.use('/api/mapping', mapping_routes_1.default);
+app.use('/api/validation', validation_routes_1.default);
+app.use('/api/analytics', analytics_routes_1.default);
+app.use('/api/reports', reports_routes_1.default);
+app.use(error_middleware_1.errorMiddleware);
+exports.default = app;

@@ -8,10 +8,11 @@ datasource db {
 }
 
 model User {
-  id        String   @id @default(cuid())
+  id        Int      @id @default(autoincrement())
   email     String   @unique
   password  String
   name      String
+  role      String   @default("user")
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
@@ -19,8 +20,8 @@ model User {
 }
 
 model UploadedFile {
-  id           String   @id @default(cuid())
-  userId       String
+  id           Int      @id @default(autoincrement())
+  userId       Int
   filename     String
   originalName String
   size         Int
@@ -36,8 +37,8 @@ model UploadedFile {
 }
 
 model ColumnMapping {
-  id                 String   @id @default(cuid())
-  fileId             String
+  id                 Int      @id @default(autoincrement())
+  fileId             Int
   originalColumnName String
   mappedField        String
   createdAt          DateTime @default(now())
@@ -46,8 +47,8 @@ model ColumnMapping {
 }
 
 model Record {
-  id        String   @id @default(cuid())
-  fileId    String
+  id        Int      @id @default(autoincrement())
+  fileId    Int
   rowNumber Int
   data      Json
   createdAt DateTime @default(now())
@@ -58,7 +59,7 @@ model Record {
 }
 
 model ErrorType {
-  id          String   @id @default(cuid())
+  id          Int      @id @default(autoincrement())
   name        String
   description String
   severity    String
@@ -67,10 +68,10 @@ model ErrorType {
 }
 
 model DetectedError {
-  id            String   @id @default(cuid())
-  fileId        String
-  recordId      String?
-  errorTypeId   String
+  id            Int      @id @default(autoincrement())
+  fileId        Int
+  recordId      Int?
+  errorTypeId   Int
   fieldName     String?
   detectedValue String?
   message       String
@@ -82,12 +83,12 @@ model DetectedError {
 }
 
 model AnalysisHistory {
-  id           String   @id @default(cuid())
-  fileId        String
-  totalRecords  Int
-  totalErrors   Int
-  qualityScore  Float
-  analyzedAt    DateTime @default(now())
+  id           Int      @id @default(autoincrement())
+  fileId       Int
+  totalRecords Int
+  totalErrors  Int
+  qualityScore Float
+  analyzedAt   DateTime @default(now())
 
   file UploadedFile @relation(fields: [fileId], references: [id])
 }

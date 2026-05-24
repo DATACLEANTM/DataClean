@@ -1,7 +1,7 @@
 // src/modules/reports/reports.types.ts
 
 export interface ErrorDetail {
-    id: string;
+    id: number;
     rowNumber: number;
     fieldName: string;
     detectedValue: string;
@@ -11,8 +11,8 @@ export interface ErrorDetail {
 }
 
 export interface AnalysisHistoryRecord {
-    id: string;
-    fileId: string;
+    id: number;
+    fileId: number;
     filename: string;
     totalRecords: number;
     totalErrors: number;

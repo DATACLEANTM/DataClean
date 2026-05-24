@@ -1,19 +1,18 @@
-// src/modules/analytics/analytics.controller.ts
-import { Request, Response } from 'express';
-import { getAnalyticsSummary } from './analytics.service';
-
-export const getSummary = async (req: Request, res: Response): Promise<void> => {
+"use strict";
+Object.defineProperty(exports, "__esModule", { value: true });
+exports.getSummary = void 0;
+const analytics_service_1 = require("./analytics.service");
+const getSummary = async (req, res) => {
     try {
-        const fileId = parseInt(req.params.fileId as string, 10);
-
+        const fileId = parseInt(req.params.fileId, 10);
         if (!fileId || isNaN(fileId)) {
             res.status(400).json({ error: 'El parámetro fileId debe ser un ID numérico válido.' });
             return;
         }
-
-        const summary = await getAnalyticsSummary(fileId);
+        const summary = await (0, analytics_service_1.getAnalyticsSummary)(fileId);
         res.status(200).json(summary);
-    } catch (error: any) {
+    }
+    catch (error) {
         if (error.message === 'FILE_NOT_FOUND') {
             res.status(404).json({ error: 'Archivo no encontrado.' });
             return;
@@ -24,3 +23,4 @@ export const getSummary = async (req: Request, res: Response): Promise<void> => 
         });
     }
 };
+exports.getSummary = getSummary;

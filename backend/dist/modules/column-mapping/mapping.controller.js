@@ -1,11 +1,10 @@
-import { Response } from 'express';
-import { MappingService } from './mapping.service';
-import { AuthRequest } from '../../middleware/auth.middleware';
-
-const mappingService = new MappingService();
-
-export class MappingController {
-    async detectColumns(req: AuthRequest, res: Response) {
+"use strict";
+Object.defineProperty(exports, "__esModule", { value: true });
+exports.MappingController = void 0;
+const mapping_service_1 = require("./mapping.service");
+const mappingService = new mapping_service_1.MappingService();
+class MappingController {
+    async detectColumns(req, res) {
         try {
             const { columns } = req.body;
             if (!columns || !Array.isArray(columns)) {
@@ -14,31 +13,33 @@ export class MappingController {
             }
             const detected = mappingService.detectColumns(columns);
             res.json({ success: true, data: detected });
-        } catch (error: any) {
+        }
+        catch (error) {
             res.status(500).json({ success: false, message: error.message });
         }
     }
-
-    async confirmMappings(req: AuthRequest, res: Response) {
+    async confirmMappings(req, res) {
         try {
-            const result = await mappingService.saveMappings(req.body, req.user!.userId);
+            const result = await mappingService.saveMappings(req.body, req.user.userId);
             res.status(201).json({ success: true, data: result });
-        } catch (error: any) {
+        }
+        catch (error) {
             res.status(500).json({ success: false, message: error.message });
         }
     }
-
-    async getMappings(req: AuthRequest, res: Response) {
+    async getMappings(req, res) {
         try {
-            const fileId = parseInt(req.params.fileId as string, 10);
+            const fileId = parseInt(req.params.fileId, 10);
             if (!fileId || isNaN(fileId)) {
                 res.status(400).json({ success: false, message: 'fileId debe ser un ID numérico válido.' });
                 return;
             }
             const mappings = await mappingService.getMappings(fileId);
             res.json({ success: true, data: mappings });
-        } catch (error: any) {
+        }
+        catch (error) {
             res.status(500).json({ success: false, message: error.message });
         }
     }
 }
+exports.MappingController = MappingController;

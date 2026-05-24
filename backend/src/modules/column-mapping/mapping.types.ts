@@ -1,5 +1,5 @@
 export interface ColumnMappingDTO {
-    fileId: string;
+    fileId: number;
     mappings: {
         originalColumnName: string;
         mappedField: string;
