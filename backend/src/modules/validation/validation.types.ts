@@ -1,12 +1,12 @@
 // validation.types.ts
 // Definición de tipos para el motor de validación de DataClean
 
-export type ValidationRule = 
-  | 'exact_duplicate' 
-  | 'fuzzy_duplicate' 
-  | 'missing_field' 
-  | 'invalid_email' 
-  | 'invalid_phone' 
+export type ValidationRule =
+  | 'exact_duplicate'
+  | 'fuzzy_duplicate'
+  | 'missing_field'
+  | 'invalid_email'
+  | 'invalid_phone'
   | 'invalid_date'
   | 'out_of_range'
   | 'referential_inconsistency'
@@ -18,6 +18,7 @@ export interface ValidationResult {
   detectedValue: any;
   message: string;
   severity: 'CRITICAL' | 'WARNING';
+  rowNumber: number;
 }
 
 export interface ValidationError {
@@ -43,3 +44,4 @@ export interface ValidationRunRequest {
   fileId: number;
   mappings: ColumnMapping[];
 }
+

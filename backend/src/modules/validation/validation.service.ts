@@ -1,213 +1,227 @@
 // validation.service.ts
 // Motor principal de validación de DataClean
-// Shara - Validation Engine Core
+import { prisma } from '../../config/database';
 
-import { ValidationRule, ValidationResult, ValidationSummary, ColumnMapping } from './validation.types';
+import {
+  ValidationRule,
+  ValidationResult,
+  ValidationSummary,
+  ColumnMapping
+} from './validation.types';
+
 import Fuse from 'fuse.js';
-import { isValid, parse, isFuture, isBefore, isAfter } from 'date-fns';
+import { isValid, parse, isFuture } from 'date-fns';
 
 export class ValidationService {
-  
-  /**
-   * Ejecuta todas las validaciones sobre un archivo
-   */
-  async runValidation(fileId: number, records: any[], mappings: ColumnMapping[]): Promise<ValidationSummary> {
-    
+
+  async runValidation(
+    fileId: number,
+    records: any[],
+    mappings: ColumnMapping[]
+  ): Promise<ValidationSummary> {
+
     const allErrors: ValidationResult[] = [];
-    
-    // Procesar cada registro (fila del archivo)
+
     for (let index = 0; index < records.length; index++) {
       const record = records[index];
       const rowNumber = index + 1;
-      
-      // Aplicar cada regla de validación
+
       const errors = await this.validateRecord(record, rowNumber, mappings);
       allErrors.push(...errors);
     }
-    
-    // Calcular resumen estadístico
+
+    const duplicateErrors = this.checkExactDuplicates(records);
+    allErrors.push(...duplicateErrors);
+
     const summary = this.calculateSummary(fileId, records.length, allErrors);
-    
-    // Aquí luego guardarás los errores en la base de datos
-    // await this.saveErrorsToDatabase(fileId, allErrors);
-    
+    await this.saveValidationResults(fileId, summary, allErrors);
     return summary;
   }
-  
-  /**
-   * Valida un registro individual contra todas las reglas
-   */
-  private async validateRecord(record: any, rowNumber: number, mappings: ColumnMapping[]): Promise<ValidationResult[]> {
+
+  private async validateRecord(
+    record: any,
+    rowNumber: number,
+    mappings: ColumnMapping[]
+  ): Promise<ValidationResult[]> {
+
     const errors: ValidationResult[] = [];
-    
-    // Crear un mapa de campo -> valor según el mapeo
     const mappedData = this.mapRecordToFields(record, mappings);
-    
-    // 1. EXACT DUPLICATE DETECTION
-    const exactErrors = await this.checkExactDuplicates(mappedData);
-    errors.push(...exactErrors);
-    
-    // 2. FUZZY DUPLICATE DETECTION (aproximados)
-    const fuzzyErrors = await this.checkFuzzyDuplicates(mappedData);
+
+    const fuzzyErrors = await this.checkFuzzyDuplicates(mappedData, rowNumber);
     errors.push(...fuzzyErrors);
-    
-    // 3. MISSING CRITICAL FIELDS (campos obligatorios vacíos)
-    const missingErrors = await this.checkMissingFields(mappedData);
+
+    const missingErrors = await this.checkMissingFields(mappedData, rowNumber);
     errors.push(...missingErrors);
-    
-    // 4. INVALID FORMATS (email, teléfono, IDs)
-    const formatErrors = await this.checkInvalidFormats(mappedData);
+
+    const formatErrors = await this.checkInvalidFormats(mappedData, rowNumber);
     errors.push(...formatErrors);
-    
-    // 5. IMPOSSIBLE DATES (fechas ilógicas)
-    const dateErrors = await this.checkImpossibleDates(mappedData);
+
+    const dateErrors = await this.checkImpossibleDates(mappedData, rowNumber);
     errors.push(...dateErrors);
-    
+
     return errors;
   }
-  
-  /**
-   * Mapea los campos originales del archivo a los campos del sistema
-   */
-  private mapRecordToFields(record: any, mappings: ColumnMapping[]): Record<string, any> {
+
+  private mapRecordToFields(
+    record: any,
+    mappings: ColumnMapping[]
+  ): Record<string, any> {
+
     const mapped: Record<string, any> = {};
-    
+
     for (const mapping of mappings) {
-      const originalValue = record[mapping.originalColumnName];
-      mapped[mapping.mappedField] = originalValue;
+      mapped[mapping.mappedField] = record[mapping.originalColumnName];
     }
-    
+
     return mapped;
   }
-  
-  /**
-   * 1. DETECCIÓN DE DUPLICADOS EXACTOS
-   * Compara si el registro actual es idéntico a otro
-   */
-  private async checkExactDuplicates(mappedData: Record<string, any>): Promise<ValidationResult[]> {
+
+  private checkExactDuplicates(records: any[]): ValidationResult[] {
     const errors: ValidationResult[] = [];
-    // Esta función necesita acceso a todos los registros.
-    // La implementaremos completamente después.
+    const seen = new Set<string>();
+
+    for (let index = 0; index < records.length; index++) {
+      const record = records[index];
+      const key = JSON.stringify(record);
+
+      if (seen.has(key)) {
+        errors.push({
+          rule: 'exact_duplicate',
+          fieldName: 'ALL_RECORD',
+          detectedValue: record,
+          message: 'Registro duplicado exacto detectado',
+          severity: 'CRITICAL',
+          rowNumber: index + 1
+        });
+      } else {
+        seen.add(key);
+      }
+    }
+
     return errors;
   }
-  
-  /**
-   * 2. DETECCIÓN DE DUPLICADOS APROXIMADOS (FUZZY)
-   * Usa Fuse.js para encontrar similitudes tipográficas
-   */
-  private async checkFuzzyDuplicates(mappedData: Record<string, any>): Promise<ValidationResult[]> {
+
+  private async checkFuzzyDuplicates(
+    mappedData: Record<string, any>,
+    rowNumber: number
+  ): Promise<ValidationResult[]> {
     const errors: ValidationResult[] = [];
-    // Implementación con Fuse.js vendrá aquí
     return errors;
   }
-  
-  /**
-   * 3. CAMPOS OBLIGATORIOS FALTANTES
-   * Verifica que campos críticos tengan valor
-   */
-  private async checkMissingFields(mappedData: Record<string, any>): Promise<ValidationResult[]> {
+
+  private async checkMissingFields(
+    mappedData: Record<string, any>,
+    rowNumber: number
+  ): Promise<ValidationResult[]> {
+
     const errors: ValidationResult[] = [];
-    
-    // Lista de campos obligatorios según el negocio
     const criticalFields = ['name', 'email', 'phone', 'id'];
-    
+
     for (const field of criticalFields) {
       const value = mappedData[field];
+
       if (!value || value === '' || value === null || value === undefined) {
         errors.push({
           rule: 'missing_field',
           fieldName: field,
           detectedValue: value,
           message: `Campo obligatorio '${field}' está vacío`,
-          severity: 'CRITICAL'
+          severity: 'CRITICAL',
+          rowNumber
         });
       }
     }
-    
+
     return errors;
   }
-  
-  /**
-   * 4. VALIDACIÓN DE FORMATOS INVÁLIDOS
-   * Email, teléfono, IDs con expresiones regulares
-   */
-  private async checkInvalidFormats(mappedData: Record<string, any>): Promise<ValidationResult[]> {
+
+  private async checkInvalidFormats(
+    mappedData: Record<string, any>,
+    rowNumber: number
+  ): Promise<ValidationResult[]> {
+
     const errors: ValidationResult[] = [];
-    
-    // Validar email
+
     const email = mappedData['email'];
     if (email && typeof email === 'string') {
       const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+
       if (!emailRegex.test(email)) {
         errors.push({
           rule: 'invalid_email',
           fieldName: 'email',
           detectedValue: email,
           message: `El email '${email}' no tiene un formato válido`,
-          severity: 'WARNING'
+          severity: 'WARNING',
+          rowNumber
         });
       }
     }
-    
-    // Validar teléfono (formato internacional básico)
+
     const phone = mappedData['phone'];
     if (phone && typeof phone === 'string') {
       const phoneRegex = /^[+]?[(]?[0-9]{1,4}[)]?[-\s.]?[0-9]{1,4}[-\s.]?[0-9]{1,9}$/;
+
       if (!phoneRegex.test(phone)) {
         errors.push({
           rule: 'invalid_phone',
           fieldName: 'phone',
           detectedValue: phone,
           message: `El teléfono '${phone}' no tiene un formato válido`,
-          severity: 'WARNING'
+          severity: 'WARNING',
+          rowNumber
         });
       }
     }
-    
+
     return errors;
   }
-  
-  /**
-   * 5. VALIDACIÓN DE FECHAS IMPOSIBLES
-   * Usa date-fns para verificar fechas lógicas
-   */
-  private async checkImpossibleDates(mappedData: Record<string, any>): Promise<ValidationResult[]> {
+
+  private async checkImpossibleDates(
+    mappedData: Record<string, any>,
+    rowNumber: number
+  ): Promise<ValidationResult[]> {
+
     const errors: ValidationResult[] = [];
-    
-    const dateField = mappedData['date'] || mappedData['createdAt'] || mappedData['fecha'];
-    
+
+    const dateField =
+      mappedData['date'] ||
+      mappedData['createdAt'] ||
+      mappedData['fecha'];
+
     if (dateField && typeof dateField === 'string') {
-      // Intentar parsear la fecha
       const parsedDate = parse(dateField, 'yyyy-MM-dd', new Date());
-      
+
       if (!isValid(parsedDate)) {
         errors.push({
           rule: 'invalid_date',
           fieldName: 'date',
           detectedValue: dateField,
           message: `La fecha '${dateField}' no es válida`,
-          severity: 'WARNING'
+          severity: 'WARNING',
+          rowNumber
         });
       } else if (isFuture(parsedDate)) {
         errors.push({
           rule: 'invalid_date',
           fieldName: 'date',
           detectedValue: dateField,
-          message: `La fecha '${dateField}' es futura (no puede existir en registros históricos)`,
-          severity: 'CRITICAL'
+          message: `La fecha '${dateField}' es futura`,
+          severity: 'CRITICAL',
+          rowNumber
         });
       }
     }
-    
+
     return errors;
   }
-  
-  /**
-   * Calcula el resumen estadístico y Quality Score
-   */
-  private calculateSummary(fileId: number, totalRecords: number, allErrors: ValidationResult[]): ValidationSummary {
-    
-    // Agrupar errores por tipo
+
+  private calculateSummary(
+    fileId: number,
+    totalRecords: number,
+    allErrors: ValidationResult[]
+  ): ValidationSummary {
+
     const errorsByType: Record<ValidationRule, number> = {
       exact_duplicate: 0,
       fuzzy_duplicate: 0,
@@ -219,25 +233,20 @@ export class ValidationService {
       referential_inconsistency: 0,
       business_contradiction: 0
     };
-    
+
     for (const error of allErrors) {
       errorsByType[error.rule]++;
     }
-    
+
     const totalErrors = allErrors.length;
-    
-    // Calcular Quality Score (0-100)
-    // Fórmula: (registros sin errores / total registros) * 100
-    // Simplificado: asumiendo que cada error afecta un registro diferente
-    const recordsWithErrors = new Set(); // Idealmente contar registros únicos con errores
+
     let qualityScore = 100;
-    
+
     if (totalErrors > 0 && totalRecords > 0) {
-      // Penalización básica
-      const penalty = Math.min(100, (totalErrors / totalRecords) * 100);
+      const penalty = (totalErrors / (totalRecords * 5)) * 100;
       qualityScore = Math.max(0, 100 - penalty);
     }
-    
+
     return {
       fileId,
       totalRecords,
@@ -245,5 +254,65 @@ export class ValidationService {
       errorsByType,
       qualityScore: Math.round(qualityScore)
     };
+  }
+
+  private async saveValidationResults(
+    fileId: number,
+    summary: ValidationSummary,
+    allErrors: ValidationResult[]
+  ): Promise<void> {
+    await prisma.analysisHistory.create({
+      data: {
+        fileId,
+        totalRecords: summary.totalRecords,
+        totalErrors: summary.totalErrors,
+        qualityScore: summary.qualityScore
+      }
+    });
+
+    for (const error of allErrors) {
+      let errorType = await prisma.errorType.findFirst({
+        where: { name: error.rule }
+      });
+
+      if (!errorType) {
+        errorType = await prisma.errorType.create({
+          data: {
+            name: error.rule,
+            description: this.getErrorDescription(error.rule),
+            severity: error.severity
+          }
+        });
+      }
+
+      await prisma.detectedError.create({
+        data: {
+          fileId,
+          errorTypeId: errorType.id,
+          rowNumber: error.rowNumber,
+          fieldName: error.fieldName,
+          detectedValue:
+            typeof error.detectedValue === 'string'
+              ? error.detectedValue
+              : JSON.stringify(error.detectedValue),
+          message: error.message
+        }
+      });
+    }
+  }
+
+  private getErrorDescription(rule: ValidationRule): string {
+    const descriptions: Record<ValidationRule, string> = {
+      exact_duplicate: 'Registro duplicado exacto',
+      fuzzy_duplicate: 'Registro duplicado aproximado',
+      missing_field: 'Campo obligatorio faltante',
+      invalid_email: 'Formato de email inválido',
+      invalid_phone: 'Formato de teléfono inválido',
+      invalid_date: 'Fecha inválida o ilógica',
+      out_of_range: 'Valor fuera de rango permitido',
+      referential_inconsistency: 'Inconsistencia referencial',
+      business_contradiction: 'Contradicción de regla de negocio'
+    };
+    return descriptions[rule];
   }
 }

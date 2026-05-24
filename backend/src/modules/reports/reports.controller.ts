@@ -1,6 +1,6 @@
 // src/modules/reports/reports.controller.ts
 import { Request, Response } from 'express';
-import { getFileErrors, getAnalysisHistory } from './reports.service';
+import { getFileErrors, getFileAnalysis, getAnalysisHistory } from './reports.service';
 
 export const getErrorsReport = async (req: Request, res: Response): Promise<void> => {
     try {
@@ -29,5 +29,29 @@ export const getHistoryReport = async (req: Request, res: Response): Promise<voi
     } catch (error) {
         console.error('Error al consultar el historial:', error);
         res.status(500).json({ error: 'Error interno al consultar el historial de auditorías.' });
+    }
+};
+
+export const getFileAnalysisReport = async (req: Request, res: Response): Promise<void> => {
+    try {
+        const fileId = parseInt(req.params.fileId as string, 10);
+        if (!fileId || isNaN(fileId)) {
+            res.status(400).json({ error: 'El parámetro fileId debe ser un ID numérico válido.' });
+            return;
+        }
+
+        const analysis = await getFileAnalysis(fileId);
+        res.status(200).json(analysis);
+    } catch (error: any) {
+        if (error.message === 'FILE_NOT_FOUND') {
+            res.status(404).json({ error: 'Archivo no encontrado.' });
+            return;
+        }
+        if (error.message === 'ANALYSIS_NOT_FOUND') {
+            res.status(404).json({ error: 'No se encontró análisis para este archivo.' });
+            return;
+        }
+        console.error('Error al consultar el análisis del archivo:', error);
+        res.status(500).json({ error: 'Error interno al consultar el análisis del archivo.' });
     }
 };

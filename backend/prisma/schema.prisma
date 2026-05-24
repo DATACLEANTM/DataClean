@@ -72,6 +72,7 @@ model DetectedError {
   fileId        Int
   recordId      Int?
   errorTypeId   Int
+  rowNumber     Int
   fieldName     String?
   detectedValue String?
   message       String
