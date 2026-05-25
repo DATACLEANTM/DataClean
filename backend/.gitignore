@@ -1,4 +1,8 @@
 # Keep environment variables out of version control
 .env
 node_modules
-
+*.log
+test-*.csv
+backend/dist/
+frontend/.next/
+.vscode/settings.json

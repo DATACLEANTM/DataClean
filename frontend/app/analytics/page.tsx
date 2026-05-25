@@ -1,5 +1,6 @@
 'use client'
 
+import { useEffect, useState } from 'react'
 import { TrendingUp, Database, AlertTriangle, BarChart3, Activity } from 'lucide-react'
 import { AppLayout } from '@/src/components/layout/app-layout'
 import { KpiCard } from '@/src/components/cards/kpi-card'
@@ -8,7 +9,7 @@ import { ErrorDistributionChart } from '@/src/components/charts/error-distributi
 import { ScoreProgressionChart } from '@/src/components/charts/score-progression-chart'
 import { Card, CardContent, CardHeader, CardTitle } from '@/src/components/ui/card'
 import { Badge } from '@/src/components/ui/badge'
-import { qualityTrends, datasetComparisons } from '@/src/data/mock-data'
+import api from '@/lib/api'
 import { cn } from '@/lib/utils'
 
 const scoreVariant = (score: number) => {
@@ -24,11 +25,25 @@ const scoreColor = (score: number) => {
 }
 
 export default function AnalyticsPage() {
-  const avgScore = qualityTrends.reduce((sum, q) => sum + q.score, 0) / qualityTrends.length
-  const totalRecords = qualityTrends.reduce((sum, q) => sum + q.records, 0)
-  const totalErrors = qualityTrends.reduce((sum, q) => sum + q.errors, 0)
-  const firstScore = qualityTrends[0].score
-  const lastScore = qualityTrends[qualityTrends.length - 1].score
+  const [data, setData] = useState<any>(null)
+  const [loading, setLoading] = useState(true)
+
+  useEffect(() => {
+    const token = localStorage.getItem('token')
+    api.get('/analytics/dashboard', { headers: { Authorization: `Bearer ${token}` } })
+      .then((res) => setData(res.data?.data ?? null))
+      .catch(() => {})
+      .finally(() => setLoading(false))
+  }, [])
+
+  const qualityTrends = data?.qualityTrends ?? []
+  const avgScore = qualityTrends.length > 0
+    ? qualityTrends.reduce((sum: number, q: any) => sum + q.score, 0) / qualityTrends.length
+    : 0
+  const totalRecords = qualityTrends.reduce((sum: number, q: any) => sum + q.records, 0)
+  const totalErrors = qualityTrends.reduce((sum: number, q: any) => sum + q.errors, 0)
+  const firstScore = qualityTrends.length > 0 ? qualityTrends[0].score : 0
+  const lastScore = qualityTrends.length > 0 ? qualityTrends[qualityTrends.length - 1].score : 0
   const trendValue = (lastScore - firstScore).toFixed(1)
 
   return (
@@ -69,75 +84,79 @@ export default function AnalyticsPage() {
           />
         </div>
 
-        <div className="grid gap-6 lg:grid-cols-7">
-          <div className="lg:col-span-4">
-            <QualityTrendsChart />
+        {loading ? (
+          <div className="flex items-center justify-center py-20">
+            <p className="text-muted-foreground">Cargando analíticas...</p>
           </div>
-          <div className="lg:col-span-3">
-            <ErrorDistributionChart />
-          </div>
-        </div>
-
-        <ScoreProgressionChart />
-
-        <Card>
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2 text-lg">
-              <BarChart3 className="size-5 text-muted-foreground" />
-              Comparación de Conjuntos
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-              {datasetComparisons.map((dataset) => (
-                <Card
-                  key={dataset.id}
-                  className="border-border/50 transition-all hover:border-border hover:shadow-sm"
-                >
-                  <CardContent className="p-5">
-                    <div className="space-y-4">
-                      <div className="flex items-start justify-between gap-2">
-                        <div className="min-w-0">
-                          <p className="truncate font-semibold">{dataset.name}</p>
-                          <p className="text-xs text-muted-foreground">
-                            {new Date(dataset.date).toLocaleDateString('en-US', {
-                              month: 'short',
-                              day: 'numeric',
-                              year: 'numeric',
-                            })}
-                          </p>
-                        </div>
-                        <Badge variant={scoreVariant(dataset.qualityScore)} className="shrink-0">
-                          {dataset.qualityScore}%
-                        </Badge>
-                      </div>
-                      <div className="flex justify-between text-sm">
-                        <span className="text-muted-foreground">Registros</span>
-                        <span className="font-medium tabular-nums">{dataset.records.toLocaleString()}</span>
-                      </div>
-                      <div className="flex justify-between text-sm">
-                        <span className="text-muted-foreground">Errores</span>
-                        <span className="font-medium tabular-nums">{dataset.errors.toLocaleString()}</span>
-                      </div>
-                      <div>
-                        <div className="mb-1.5 flex justify-between text-xs">
-                          <span className="text-muted-foreground">Calidad</span>
-                          <span className="font-medium">{dataset.qualityScore}%</span>
-                        </div>
-                        <div className="h-2 w-full overflow-hidden rounded-full bg-muted">
-                          <div
-                            className={cn('h-full rounded-full transition-all', scoreColor(dataset.qualityScore))}
-                            style={{ width: `${dataset.qualityScore}%` }}
-                          />
-                        </div>
-                      </div>
-                    </div>
-                  </CardContent>
-                </Card>
-              ))}
+        ) : (
+          <>
+            <div className="grid gap-6 lg:grid-cols-7">
+              <div className="lg:col-span-4">
+                <QualityTrendsChart data={qualityTrends} />
+              </div>
+              <div className="lg:col-span-3">
+                <ErrorDistributionChart data={data?.errorDistribution ?? []} />
+              </div>
             </div>
-          </CardContent>
-        </Card>
+
+            <ScoreProgressionChart data={qualityTrends} />
+
+            <Card>
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2 text-lg">
+                  <BarChart3 className="size-5 text-muted-foreground" />
+                  Historial de Auditorías
+                </CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+                  {(data?.history ?? []).length > 0 ? (
+                    data.history.map((item: any, i: number) => (
+                      <Card
+                        key={item.id ?? i}
+                        className="border-border/50 transition-all hover:border-border hover:shadow-sm"
+                      >
+                        <CardContent className="p-5">
+                          <div className="space-y-4">
+                            <div className="flex items-start justify-between gap-2">
+                              <div className="min-w-0">
+                                <p className="truncate font-semibold">{item.filename ?? `Auditoría #${item.fileId}`}</p>
+                                <p className="text-xs text-muted-foreground">
+                                  {item.analyzedAt
+                                    ? new Date(item.analyzedAt).toLocaleDateString('en-US', {
+                                        month: 'short',
+                                        day: 'numeric',
+                                        year: 'numeric',
+                                      })
+                                    : '--'}
+                                </p>
+                              </div>
+                              <Badge variant={scoreVariant(item.qualityScore ?? 0)} className="shrink-0">
+                                {item.qualityScore ?? '--'}%
+                              </Badge>
+                            </div>
+                            <div className="flex justify-between text-sm">
+                              <span className="text-muted-foreground">Registros</span>
+                              <span className="font-medium tabular-nums">{(item.totalRecords ?? 0).toLocaleString()}</span>
+                            </div>
+                            <div className="flex justify-between text-sm">
+                              <span className="text-muted-foreground">Errores</span>
+                              <span className="font-medium tabular-nums">{(item.totalErrors ?? 0).toLocaleString()}</span>
+                            </div>
+                          </div>
+                        </CardContent>
+                      </Card>
+                    ))
+                  ) : (
+                    <div className="col-span-full py-8 text-center text-sm text-muted-foreground">
+                      No hay datos de auditorías disponibles
+                    </div>
+                  )}
+                </div>
+              </CardContent>
+            </Card>
+          </>
+        )}
       </div>
     </AppLayout>
   )

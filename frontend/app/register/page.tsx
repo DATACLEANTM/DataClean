@@ -8,7 +8,7 @@ import { Button } from '@/components/ui/button'
 import { Input } from '@/src/components/ui/input'
 import { Label } from '@/src/components/ui/label'
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/src/components/ui/card'
-import { login } from '@/src/lib/auth'
+import api from '@/lib/api'
 
 const PASSWORD_RULES = [
   { label: 'Al menos 8 caracteres', test: (v: string) => v.length >= 8 },
@@ -26,6 +26,7 @@ function RegisterForm() {
   const [form, setForm] = useState({ name: '', email: '', password: '', confirmPassword: '' })
   const [errors, setErrors] = useState<Record<string, string>>({})
   const [touched, setTouched] = useState<Record<string, boolean>>({})
+  const [loading, setLoading] = useState(false)
 
   const validate = () => {
     const errs: Record<string, string> = {}
@@ -40,12 +41,30 @@ function RegisterForm() {
     return Object.keys(errs).length === 0
   }
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
     setTouched({ name: true, email: true, password: true, confirmPassword: true })
-    if (validate()) {
-      login()
+    if (!validate()) return
+
+    setLoading(true)
+    try {
+      const response = await api.post('/auth/register', {
+        name: form.name,
+        email: form.email,
+        password: form.password
+      })
+      const { token, user } = response.data.data
+      localStorage.setItem('token', token)
+      if (user) localStorage.setItem('user', JSON.stringify(user))
       window.location.href = redirect
+    } catch (err: any) {
+      const message =
+        err.response?.data?.message ||
+        err.response?.data?.error ||
+        'Error al registrar. Intenta de nuevo.'
+      setErrors((p) => ({ ...p, form: message }))
+    } finally {
+      setLoading(false)
     }
   }
 
@@ -189,12 +208,18 @@ function RegisterForm() {
             </div>
           </CardContent>
           <CardFooter className="flex flex-col gap-3">
+            {errors.form && (
+              <p className="w-full rounded-lg bg-red-500/10 px-3 py-2 text-center text-sm font-medium text-red-400">
+                {errors.form}
+              </p>
+            )}
             <Button
               type="submit"
-              className="w-full rounded-lg bg-gradient-to-r from-blue-500 to-purple-600 py-2 text-sm font-semibold text-white shadow-lg shadow-blue-500/25 transition-all hover:from-blue-400 hover:to-purple-500 hover:shadow-blue-400/30"
+              disabled={loading}
+              className="w-full rounded-lg bg-gradient-to-r from-blue-500 to-purple-600 py-2 text-sm font-semibold text-white shadow-lg shadow-blue-500/25 transition-all hover:from-blue-400 hover:to-purple-500 hover:shadow-blue-400/30 disabled:opacity-60"
               size="lg"
             >
-              Crear Cuenta
+              {loading ? 'Creando cuenta...' : 'Crear Cuenta'}
             </Button>
             <p className="text-center text-xs text-white/40">
               ¿Ya tienes cuenta?{' '}

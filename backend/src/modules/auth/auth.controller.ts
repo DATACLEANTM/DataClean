@@ -1,5 +1,6 @@
 import { Request, Response } from 'express';
 import { AuthService } from './auth.service';
+import { AuthRequest } from '../../middleware/auth.middleware';
 
 const authService = new AuthService();
 
@@ -19,6 +20,16 @@ export class AuthController {
             res.json({ success: true, data: result });
         } catch (error: any) {
             res.status(401).json({ success: false, message: error.message });
+        }
+    }
+
+    async updateProfile(req: AuthRequest, res: Response) {
+        try {
+            const userId = req.user!.userId;
+            const result = await authService.updateProfile(userId, req.body);
+            res.json({ success: true, data: result });
+        } catch (error: any) {
+            res.status(400).json({ success: false, message: error.message });
         }
     }
 }

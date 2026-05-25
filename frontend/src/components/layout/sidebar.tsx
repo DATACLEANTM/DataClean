@@ -3,7 +3,6 @@
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
 import { cn } from '@/lib/utils'
-import { navItems } from '@/src/data/mock-data'
 import { logout } from '@/src/lib/auth'
 import {
   LayoutDashboard,
@@ -18,6 +17,18 @@ import {
   LogOut,
   HelpCircle,
 } from 'lucide-react'
+
+const navItems: { label: string; href: string; icon: string; badge?: string }[] = [
+  { label: 'Panel Principal', href: '/dashboard', icon: 'LayoutDashboard' },
+  { label: 'Subir Archivo', href: '/upload', icon: 'Upload' },
+  { label: 'Mapeo de Columnas', href: '/mapping', icon: 'GitCompare' },
+  { label: 'Procesando Auditoría', href: '/processing', icon: 'Loader2' },
+  { label: 'Resultados', href: '/validation', icon: 'ShieldCheck' },
+  { label: 'Analíticas', href: '/analytics', icon: 'BarChart3' },
+  { label: 'Reportes', href: '/reports', icon: 'FileText' },
+  { label: 'Configuración', href: '/settings', icon: 'Settings' },
+  { label: 'Ayuda', href: '/help', icon: 'HelpCircle' },
+]
 
 const primaryItems = ['LayoutDashboard', 'Upload', 'GitCompare', 'Loader2', 'ShieldCheck']
 const secondaryItems = ['BarChart3', 'FileText', 'Settings', 'HelpCircle']

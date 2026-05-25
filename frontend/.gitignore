@@ -41,3 +41,9 @@ yarn-error.log*
 next-env.d.ts
 AGENTS.md
 CLAUDE.md
+.env.local
+*.log
+test-*.csv
+backend/dist/
+frontend/.next/
+.vscode/settings.json

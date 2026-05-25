@@ -14,3 +14,8 @@ export interface JwtPayload {
     email: string;
     role: string;
 }
+
+export interface UpdateProfileDTO {
+    name?: string;
+    email?: string;
+}

@@ -26,6 +26,7 @@ model UploadedFile {
   originalName String
   size         Int
   rowCount     Int?
+  columns      String[]
   uploadedAt   DateTime @default(now())
 
   user User @relation(fields: [userId], references: [id])

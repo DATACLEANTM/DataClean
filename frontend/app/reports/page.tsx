@@ -1,6 +1,7 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
+import { useRouter } from 'next/navigation'
 import { FileText, Download, FileSpreadsheet, File, Clock, CheckCircle, XCircle, BarChart3, Eye } from 'lucide-react'
 import { Card, CardContent, CardHeader, CardTitle } from '@/src/components/ui/card'
 import { Button } from '@/components/ui/button'
@@ -9,23 +10,10 @@ import { SummaryCard } from '@/src/components/cards/summary-card'
 import { AppLayout } from '@/src/components/layout/app-layout'
 import { EmptyState } from '@/src/components/ui/empty-state'
 import { ReportPreviewModal } from '@/src/components/ui/report-preview-modal'
-import { reports } from '@/src/data/mock-data'
-import type { ReportRecord } from '@/src/types'
+import api from '@/lib/api'
 import toast from 'react-hot-toast'
 
-const typeLabel: Record<ReportRecord['type'], string> = {
-  executive: 'Resumen Ejecutivo',
-  detailed: 'Informe Detallado',
-  summary: 'Resumen de Calidad',
-}
-
-const statusLabel: Record<ReportRecord['status'], string> = {
-  completed: 'Completado',
-  generating: 'Generando',
-  failed: 'Fallido',
-}
-
-const formatIcon = (format: ReportRecord['format']) => {
+const formatIcon = (format: string) => {
   switch (format) {
     case 'pdf':
       return <FileText className="size-4" />
@@ -33,42 +21,57 @@ const formatIcon = (format: ReportRecord['format']) => {
       return <FileSpreadsheet className="size-4" />
     case 'xlsx':
       return <File className="size-4" />
+    default:
+      return <FileText className="size-4" />
   }
 }
 
-const statusBadge = (status: ReportRecord['status']) => {
+const statusBadge = (status: string) => {
   const variants: Record<string, 'success' | 'warning' | 'destructive'> = {
     completed: 'success',
     generating: 'warning',
     failed: 'destructive',
   }
-  return <Badge variant={variants[status]}>{statusLabel[status]}</Badge>
-}
-
-const typeBadge = (type: ReportRecord['type']) => {
-  const variants: Record<string, 'default' | 'secondary' | 'outline'> = {
-    executive: 'default',
-    detailed: 'secondary',
-    summary: 'outline',
-  }
-  return <Badge variant={variants[type]}>{typeLabel[type]}</Badge>
+  return <Badge variant={variants[status] ?? 'secondary'}>{status}</Badge>
 }
 
 export default function ReportsPage() {
-  const [previewReport, setPreviewReport] = useState<ReportRecord | null>(null)
+  const router = useRouter()
+  const [previewReport, setPreviewReport] = useState<any>(null)
+  const [reports, setReports] = useState<any[]>([])
+  const [loading, setLoading] = useState(true)
+
+  useEffect(() => {
+    const token = localStorage.getItem('token')
+    api.get('/reports/history', { headers: { Authorization: `Bearer ${token}` } })
+      .then((res) => {
+        const data = Array.isArray(res.data) ? res.data : res.data?.data ?? []
+        setReports(data.map((r: any, i: number) => ({
+          id: r.id ?? `rpt_${i}`,
+          name: r.filename ?? `Auditoría #${r.fileId}`,
+          type: r.type ?? 'detailed',
+          format: r.format ?? 'pdf',
+          createdAt: r.analyzedAt ?? r.createdAt ?? new Date().toISOString(),
+          status: r.status ?? 'completed',
+          size: r.size ?? '--',
+        })))
+      })
+      .catch(() => {})
+      .finally(() => setLoading(false))
+  }, [])
 
   const total = reports.length
-  const completed = reports.filter((r) => r.status === 'completed').length
-  const failed = reports.filter((r) => r.status === 'failed').length
+  const completed = reports.filter((r: any) => r.status === 'completed').length
+  const failed = reports.filter((r: any) => r.status === 'failed').length
   const latest = reports.length > 0
-    ? new Date(Math.max(...reports.map((r) => new Date(r.createdAt).getTime()))).toLocaleDateString('en-US', {
+    ? new Date(Math.max(...reports.map((r: any) => new Date(r.createdAt).getTime()))).toLocaleDateString('en-US', {
         month: 'short',
         day: 'numeric',
         year: 'numeric',
       })
     : '--'
 
-  const handleDownload = (report: ReportRecord) => {
+  const handleDownload = (report: any) => {
     if (report.status === 'generating') {
       toast.error('El reporte aún se está generando')
       return
@@ -84,6 +87,16 @@ export default function ReportsPage() {
     toast.success(`Exportando reporte como ${format.toUpperCase()}...`)
   }
 
+  if (loading) {
+    return (
+      <AppLayout>
+        <div className="flex items-center justify-center py-20">
+          <p className="text-muted-foreground">Cargando reportes...</p>
+        </div>
+      </AppLayout>
+    )
+  }
+
   return (
     <AppLayout>
       <div className="space-y-6">
@@ -97,7 +110,7 @@ export default function ReportsPage() {
             title="No hay reportes disponibles"
             description="Los reportes generados aparecerán aquí después de completar una auditoría."
             action={
-              <Button render={<a href="/upload" />}>
+              <Button onClick={() => router.push('/upload')}>
                 Subir un archivo
               </Button>
             }
@@ -132,25 +145,17 @@ export default function ReportsPage() {
                     <thead>
                       <tr className="border-b text-left text-muted-foreground">
                         <th className="pb-3 font-medium">Nombre</th>
-                        <th className="pb-3 font-medium">Tipo</th>
-                        <th className="pb-3 font-medium">Formato</th>
                         <th className="pb-3 font-medium">Fecha</th>
-                        <th className="pb-3 font-medium">Estado</th>
-                        <th className="pb-3 font-medium">Tamaño</th>
+                        <th className="pb-3 font-medium">Registros</th>
+                        <th className="pb-3 font-medium">Errores</th>
+                        <th className="pb-3 font-medium">Calidad</th>
                         <th className="pb-3 font-medium" />
                       </tr>
                     </thead>
                     <tbody>
-                      {reports.map((report) => (
+                      {reports.map((report: any) => (
                         <tr key={report.id} className="border-b last:border-0">
                           <td className="py-3 font-medium">{report.name}</td>
-                          <td className="py-3">{typeBadge(report.type)}</td>
-                          <td className="py-3">
-                            <div className="flex items-center gap-2">
-                              {formatIcon(report.format)}
-                              <span className="uppercase">{report.format}</span>
-                            </div>
-                          </td>
                           <td className="py-3 text-muted-foreground">
                             {new Date(report.createdAt).toLocaleDateString('en-US', {
                               month: 'short',
@@ -158,28 +163,11 @@ export default function ReportsPage() {
                               year: 'numeric',
                             })}
                           </td>
-                          <td className="py-3">{statusBadge(report.status)}</td>
-                          <td className="py-3 text-muted-foreground">{report.size}</td>
+                          <td className="py-3">{report.totalRecords?.toLocaleString() ?? '--'}</td>
+                          <td className="py-3">{report.totalErrors?.toLocaleString() ?? '--'}</td>
+                          <td className="py-3">{statusBadge(report.qualityScore ? `${report.qualityScore}%` : '--')}</td>
                           <td className="py-3">
                             <div className="flex items-center gap-2">
-                              {report.status === 'completed' && (
-                                <Button
-                                  variant="outline"
-                                  size="sm"
-                                  onClick={() => setPreviewReport(report)}
-                                >
-                                  <Eye className="mr-1 size-3" />
-                                  Vista Previa
-                                </Button>
-                              )}
-                              <Button
-                                variant="default"
-                                size="sm"
-                                onClick={() => handleDownload(report)}
-                              >
-                                <Download className="mr-1 size-3" />
-                                Descargar
-                              </Button>
                             </div>
                           </td>
                         </tr>

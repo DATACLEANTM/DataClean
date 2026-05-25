@@ -1,8 +1,9 @@
 'use client'
 
-import { useState, useMemo } from 'react'
+import { useState, useEffect, useMemo, Suspense } from 'react'
+import { useSearchParams, useRouter } from 'next/navigation'
 import {
-  Database, AlertTriangle, TrendingUp, Copy, FileText, XCircle, Search,
+  Database, AlertTriangle, TrendingUp, Copy, FileText, XCircle, Search, Loader2,
 } from 'lucide-react'
 import { AppLayout } from '@/src/components/layout/app-layout'
 import { KpiCard } from '@/src/components/cards/kpi-card'
@@ -10,7 +11,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/src/components/ui/ca
 import { Badge } from '@/src/components/ui/badge'
 import { Tabs, TabsList, TabsTab, TabsPanel } from '@/src/components/ui/tabs'
 import { Input } from '@/src/components/ui/input'
-import { validationIssues, errorDistribution } from '@/src/data/mock-data'
+import api from '@/lib/api'
 import { PieChart, Pie, Cell, ResponsiveContainer, Tooltip, Legend } from 'recharts'
 
 const categoryLabels: Record<string, string> = {
@@ -53,43 +54,120 @@ const statusLabel: Record<string, string> = {
   ignored: 'ignorado',
 }
 
-export default function ValidationPage() {
+function ValidationContent() {
+  const searchParams = useSearchParams()
+  const router = useRouter()
+  const paramFileId = searchParams.get('fileId')
+
   const [search, setSearch] = useState('')
   const [activeTab, setActiveTab] = useState('all')
+  const [issues, setIssues] = useState<any[]>([])
+  const [result, setResult] = useState<{ totalRecords: number; totalErrors: number; qualityScore: number } | null>(null)
+  const [loading, setLoading] = useState(true)
+
+  useEffect(() => {
+    const token = localStorage.getItem('token')
+
+    const fetchData = async () => {
+      try {
+        let targetFileId = paramFileId
+
+        if (!targetFileId) {
+          const histRes = await api.get('/reports/history', {
+            headers: { Authorization: `Bearer ${token}` },
+          })
+          const history = Array.isArray(histRes.data) ? histRes.data : histRes.data?.data ?? []
+          if (history.length > 0) {
+            targetFileId = String(history[0].fileId)
+          }
+        }
+
+        if (!targetFileId) {
+          setLoading(false)
+          return
+        }
+
+        const [resultRes, errorsRes] = await Promise.all([
+          api.get(`/validation/results/${targetFileId}`, {
+            headers: { Authorization: `Bearer ${token}` },
+          }),
+          api.get(`/validation/errors/${targetFileId}`, {
+            headers: { Authorization: `Bearer ${token}` },
+          }),
+        ])
+
+        const resultData = resultRes.data?.data
+        const errorsData = errorsRes.data?.data ?? []
+
+        if (resultData) {
+          setResult({
+            totalRecords: resultData.totalRecords ?? 0,
+            totalErrors: resultData.totalErrors ?? 0,
+            qualityScore: resultData.qualityScore ?? 0,
+          })
+        }
+
+        if (Array.isArray(errorsData)) {
+          const flat: any[] = []
+          errorsData.forEach((group: any, gi: number) => {
+            (group.errors ?? []).forEach((err: any, ei: number) => {
+              flat.push({
+                id: `err_${gi}_${ei}`,
+                row: group.rowNumber ?? 0,
+                column: err.fieldName ?? '',
+                category: err.rule ?? 'unknown',
+                message: err.message ?? '',
+                value: err.detectedValue ?? '',
+                severity: err.severity === 'CRITICAL' ? 'critical' : err.severity === 'WARNING' ? 'major' : 'minor',
+                status: 'open',
+              })
+            })
+          })
+          setIssues(flat)
+        }
+      } catch {
+        /* silent */
+      } finally {
+        setLoading(false)
+      }
+    }
+
+    fetchData()
+  }, [paramFileId])
 
   const categories = useMemo(() => {
-    const set = new Set(validationIssues.map(i => i.category))
+    const set = new Set(issues.map(i => i.category))
     return Array.from(set)
-  }, [])
+  }, [issues])
 
   const filteredIssues = useMemo(() => {
-    let issues = validationIssues
+    let filtered = issues
     if (activeTab !== 'all') {
-      issues = issues.filter(i => i.category === activeTab)
+      filtered = filtered.filter(i => i.category === activeTab)
     }
     if (search) {
       const q = search.toLowerCase()
-      issues = issues.filter(i =>
+      filtered = filtered.filter(i =>
         i.message.toLowerCase().includes(q) ||
         i.column.toLowerCase().includes(q) ||
         i.value.toLowerCase().includes(q)
       )
     }
-    return issues
-  }, [activeTab, search])
+    return filtered
+  }, [activeTab, search, issues])
 
-  const totalIssues = validationIssues.length
-  const criticalCount = validationIssues.filter(i => i.severity === 'critical').length
-  const majorCount = validationIssues.filter(i => i.severity === 'major').length
-  const minorCount = validationIssues.filter(i => i.severity === 'minor').length
-  const openCount = validationIssues.filter(i => i.status === 'open').length
-  const resolvedCount = validationIssues.filter(i => i.status === 'resolved').length
-  const ignoredCount = validationIssues.filter(i => i.status === 'ignored').length
-  const duplicateCount = validationIssues.filter(
+  const totalIssues = issues.length
+  const criticalCount = issues.filter(i => i.severity === 'critical').length
+  const majorCount = issues.filter(i => i.severity === 'major').length
+  const minorCount = issues.filter(i => i.severity === 'minor').length
+  const openCount = issues.filter(i => i.status === 'open').length
+  const resolvedCount = issues.filter(i => i.status === 'resolved').length
+  const ignoredCount = issues.filter(i => i.status === 'ignored').length
+  const duplicateCount = issues.filter(
     i => i.category === 'exact_duplicate' || i.category === 'fuzzy_duplicate'
   ).length
-  const missingFieldCount = validationIssues.filter(i => i.category === 'missing_field').length
-  const invalidCount = validationIssues.filter(i =>
+  const missingFieldCount = issues.filter(i => i.category === 'missing_field').length
+  const invalidCount = issues.filter(i =>
     ['invalid_email', 'invalid_phone', 'invalid_date'].includes(i.category)
   ).length
 
@@ -98,6 +176,36 @@ export default function ValidationPage() {
     { label: 'Mayor', count: majorCount, color: '#F59E0B' },
     { label: 'Menor', count: minorCount, color: '#3B82F6' },
   ]
+
+  const errorDist = useMemo(() => {
+    const counts: Record<string, number> = {}
+    const colors: Record<string, string> = {
+      exact_duplicate: '#22C55E', fuzzy_duplicate: '#8B5CF6', missing_field: '#EF4444',
+      invalid_email: '#F59E0B', invalid_phone: '#3B82F6', invalid_date: '#EC4899',
+    }
+    issues.forEach(i => { counts[i.category] = (counts[i.category] ?? 0) + 1 })
+    return Object.entries(counts).map(([name, value]) => ({
+      name: formatCategory(name),
+      value,
+      color: colors[name] ?? '#6366F1',
+    }))
+  }, [issues])
+
+  if (loading) {
+    return (
+      <AppLayout>
+        <div className="space-y-6">
+          <div>
+            <h1 className="text-2xl font-bold tracking-tight">Resultados de Validación</h1>
+            <p className="text-sm text-muted-foreground">Cargando resultados...</p>
+          </div>
+          <div className="flex items-center justify-center py-20">
+            <p className="text-muted-foreground">Cargando datos de validación...</p>
+          </div>
+        </div>
+      </AppLayout>
+    )
+  }
 
   return (
     <AppLayout>
@@ -114,7 +222,7 @@ export default function ValidationPage() {
         <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-6">
           <KpiCard
             title="Total Registros"
-            value="15,234"
+            value={result?.totalRecords?.toLocaleString() ?? '—'}
             icon={<Database className="size-5" />}
           />
           <KpiCard
@@ -124,9 +232,7 @@ export default function ValidationPage() {
           />
           <KpiCard
             title="Calidad Promedio"
-            value="94.2%"
-            change="+1.2%"
-            changeType="positive"
+            value={result ? `${result.qualityScore}%` : '—'}
             icon={<TrendingUp className="size-5" />}
           />
           <KpiCard
@@ -157,7 +263,7 @@ export default function ValidationPage() {
                   <ResponsiveContainer width="100%" height="100%">
                     <PieChart>
                       <Pie
-                        data={errorDistribution}
+                        data={errorDist}
                         cx="50%"
                         cy="50%"
                         innerRadius={60}
@@ -165,7 +271,7 @@ export default function ValidationPage() {
                         paddingAngle={2}
                         dataKey="value"
                       >
-                        {errorDistribution.map((entry, index) => (
+                        {errorDist.map((entry, index) => (
                           <Cell key={`cell-${index}`} fill={entry.color} />
                         ))}
                       </Pie>
@@ -329,5 +435,25 @@ export default function ValidationPage() {
         </Card>
       </div>
     </AppLayout>
+  )
+}
+
+export default function ValidationPage() {
+  return (
+    <Suspense fallback={
+      <AppLayout>
+        <div className="space-y-6">
+          <div>
+            <h1 className="text-2xl font-bold tracking-tight">Resultados de Validación</h1>
+            <p className="text-sm text-muted-foreground">Cargando...</p>
+          </div>
+          <div className="flex items-center justify-center py-20">
+            <Loader2 className="size-6 animate-spin text-muted-foreground" />
+          </div>
+        </div>
+      </AppLayout>
+    }>
+      <ValidationContent />
+    </Suspense>
   )
 }

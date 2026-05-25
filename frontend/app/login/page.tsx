@@ -8,7 +8,7 @@ import { Button } from '@/components/ui/button'
 import { Input } from '@/src/components/ui/input'
 import { Label } from '@/src/components/ui/label'
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/src/components/ui/card'
-import { login } from '@/src/lib/auth'
+import api from '@/lib/api'
 
 function LoginForm() {
   const searchParams = useSearchParams()
@@ -20,22 +20,44 @@ function LoginForm() {
   const [password, setPassword] = useState('')
   const [remember, setRemember] = useState(false)
   const [errors, setErrors] = useState<{ email?: string; password?: string }>({})
+  const [loading, setLoading] = useState(false)
 
   const validate = () => {
     const errs: typeof errors = {}
     if (!email) errs.email = 'El correo es requerido'
     else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) errs.email = 'Ingresa un correo válido'
     if (!password) errs.password = 'La contraseña es requerida'
+
     else if (password.length < 8) errs.password = 'La contraseña debe tener al menos 8 caracteres'
     setErrors(errs)
     return Object.keys(errs).length === 0
   }
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
-    if (validate()) {
-      login()
+
+    if (!validate()) return
+
+    try {
+      setLoading(true)
+
+      const response = await api.post('/auth/login', {
+        email,
+        password,
+      })
+
+      const { token, user } = response.data.data
+
+      localStorage.setItem('token', token)
+      if (user) localStorage.setItem('user', JSON.stringify(user))
+
       window.location.href = redirect
+    } catch (error: any) {
+      setErrors({
+        email: 'Correo o contraseña incorrectos',
+      })
+    } finally {
+      setLoading(false)
     }
   }
 
@@ -128,7 +150,7 @@ function LoginForm() {
               className="w-full rounded-lg bg-gradient-to-r from-blue-500 to-purple-600 py-2 text-sm font-semibold text-white shadow-lg shadow-blue-500/25 transition-all hover:from-blue-400 hover:to-purple-500 hover:shadow-blue-400/30"
               size="lg"
             >
-              Iniciar Sesión
+              {loading ? 'Iniciando sesión...' : 'Iniciar Sesión'}
             </Button>
             <p className="text-center text-xs text-white/40">
               ¿No tienes cuenta?{' '}

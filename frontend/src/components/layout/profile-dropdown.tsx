@@ -5,13 +5,20 @@ import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 import { User, Settings, HelpCircle, LogOut, ChevronDown } from 'lucide-react'
 import { Avatar, AvatarFallback } from '@/src/components/ui/avatar'
-import { currentUser } from '@/src/data/mock-data'
 import { logout } from '@/src/lib/auth'
 
 export function ProfileDropdown() {
   const [open, setOpen] = useState(false)
+  const [user, setUser] = useState<{ name: string; email: string } | null>(null)
   const menuRef = useRef<HTMLDivElement>(null)
   const router = useRouter()
+
+  useEffect(() => {
+    try {
+      const raw = localStorage.getItem('user')
+      if (raw) setUser(JSON.parse(raw))
+    } catch { /* ignore */ }
+  }, [])
 
   useEffect(() => {
     function handleClickOutside(e: MouseEvent) {
@@ -23,10 +30,9 @@ export function ProfileDropdown() {
     return () => document.removeEventListener('mousedown', handleClickOutside)
   }, [])
 
-  const initials = currentUser.name
-    .split(' ')
-    .map((n) => n[0])
-    .join('')
+  const initials = user?.name
+    ? user.name.split(' ').map((n: string) => n[0]).join('')
+    : '?'
 
   const handleLogout = () => {
     logout()
@@ -46,9 +52,11 @@ export function ProfileDropdown() {
         onClick={() => setOpen(!open)}
         className="flex items-center gap-3 rounded-lg p-1.5 transition-colors hover:bg-muted"
       >
-        <div className="text-right">
-          <p className="text-sm font-medium leading-none">{currentUser.name}</p>
-        </div>
+        {user && (
+          <div className="text-right">
+            <p className="text-sm font-medium leading-none">{user.name}</p>
+          </div>
+        )}
         <Avatar>
           <AvatarFallback className="bg-primary/10 text-primary text-xs">
             {initials}
@@ -59,10 +67,12 @@ export function ProfileDropdown() {
 
       {open && (
         <div className="absolute right-0 top-full mt-1.5 w-52 overflow-hidden rounded-xl border bg-card py-1 shadow-lg animate-in fade-in slide-in-from-top-2">
-          <div className="border-b px-4 py-2.5">
-            <p className="text-sm font-medium text-foreground">{currentUser.name}</p>
-            <p className="text-xs text-muted-foreground">{currentUser.email}</p>
-          </div>
+          {user && (
+            <div className="border-b px-4 py-2.5">
+              <p className="text-sm font-medium text-foreground">{user.name}</p>
+              <p className="text-xs text-muted-foreground">{user.email}</p>
+            </div>
+          )}
           <div className="py-1">
             {menuItems.map((item) => (
               <Link

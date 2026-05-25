@@ -21,7 +21,7 @@ export class MappingService {
             return {
                 originalName: col,
                 suggestedField: results[0]?.item ?? 'desconocido',
-                confidence: results[0] ? parseFloat((1 - (results[0].refIndex !== undefined ? (results[0].score ?? 1) : 1)).toFixed(2)) : 0,
+                confidence: results[0] ? 1 : 0,
             };
         });
     }

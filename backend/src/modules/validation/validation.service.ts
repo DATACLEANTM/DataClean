@@ -1,6 +1,9 @@
-// validation.service.ts
-// Motor principal de validación de DataClean
+import fs from 'fs';
+import path from 'path';
+import csv from 'csv-parser';
+import * as XLSX from 'xlsx';
 import { prisma } from '../../config/database';
+import { env } from '../../config/env';
 
 import {
   ValidationRule,
@@ -13,6 +16,46 @@ import Fuse from 'fuse.js';
 import { isValid, parse, isFuture } from 'date-fns';
 
 export class ValidationService {
+
+  async loadFileRecords(fileId: number): Promise<any[]> {
+    const uploaded = await prisma.uploadedFile.findUnique({ where: { id: fileId } });
+    if (!uploaded) throw new Error('Archivo no encontrado');
+
+    const uploadDir = path.resolve(process.cwd(), env.uploadDir);
+    const filePath = path.resolve(uploadDir, uploaded.filename);
+
+    if (!fs.existsSync(filePath)) {
+      throw new Error('Archivo no encontrado en el disco');
+    }
+
+    const ext = path.extname(uploaded.filename).toLowerCase();
+
+    if (ext === '.csv') {
+      return this.parseCSVRecords(filePath);
+    } else if (ext === '.xlsx' || ext === '.xls') {
+      return this.parseExcelRecords(filePath);
+    }
+
+    throw new Error('Tipo de archivo no soportado');
+  }
+
+  private parseCSVRecords(filePath: string): Promise<any[]> {
+    return new Promise((resolve, reject) => {
+      const records: any[] = [];
+      fs.createReadStream(filePath)
+        .pipe(csv())
+        .on('data', (data: any) => { records.push(data); })
+        .on('end', () => resolve(records))
+        .on('error', reject);
+    });
+  }
+
+  private parseExcelRecords(filePath: string): any[] {
+    const workbook = XLSX.readFile(filePath);
+    const sheetName = workbook.SheetNames[0];
+    const sheet = workbook.Sheets[sheetName];
+    return XLSX.utils.sheet_to_json(sheet);
+  }
 
   async runValidation(
     fileId: number,

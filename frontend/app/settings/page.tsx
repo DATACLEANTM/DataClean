@@ -1,7 +1,7 @@
 'use client'
 
-import { useState } from 'react'
-import { User, Bell, Palette, Shield, Save, Moon, Sun } from 'lucide-react'
+import { useState, useEffect } from 'react'
+import { User, Bell, Palette, Shield, Save, Moon, Sun, Loader2 } from 'lucide-react'
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/src/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/src/components/ui/input'
@@ -9,13 +9,26 @@ import { Label } from '@/src/components/ui/label'
 import { Switch } from '@/src/components/ui/switch'
 import { Separator } from '@/src/components/ui/separator'
 import { AppLayout } from '@/src/components/layout/app-layout'
-import { currentUser } from '@/src/data/mock-data'
 import { useTheme } from '@/src/hooks/use-theme'
+import api from '@/lib/api'
+import toast from 'react-hot-toast'
 
 export default function SettingsPage() {
-  const [name, setName] = useState(currentUser.name)
-  const [email, setEmail] = useState(currentUser.email)
+  const [name, setName] = useState('')
+  const [email, setEmail] = useState('')
+
+  useEffect(() => {
+    try {
+      const raw = localStorage.getItem('user')
+      if (raw) {
+        const u = JSON.parse(raw)
+        if (u.name) setName(u.name)
+        if (u.email) setEmail(u.email)
+      }
+    } catch { /* ignore */ }
+  }, [])
   const [company, setCompany] = useState('DataClean Inc.')
+  const [saving, setSaving] = useState(false)
   const [notifications, setNotifications] = useState({
     emailNotifications: true,
     uploadComplete: true,
@@ -58,9 +71,24 @@ export default function SettingsPage() {
                 <Input id="company" value={company} onChange={(e) => setCompany(e.target.value)} />
               </div>
             </div>
-            <Button onClick={() => alert('Cambios guardados exitosamente')}>
-              <Save className="mr-2 size-4" />
-              Guardar Cambios
+            <Button disabled={saving} onClick={async () => {
+                setSaving(true)
+                try {
+                  const token = localStorage.getItem('token')
+                  const res = await api.put('/auth/profile', { name, email }, {
+                    headers: { Authorization: `Bearer ${token}` },
+                  })
+                  const updatedUser = res.data.data.user
+                  localStorage.setItem('user', JSON.stringify(updatedUser))
+                  toast.success('Perfil actualizado correctamente')
+                } catch (err: any) {
+                  toast.error(err.response?.data?.message || 'Error al guardar los cambios')
+                } finally {
+                  setSaving(false)
+                }
+              }}>
+              {saving ? <Loader2 className="mr-2 size-4 animate-spin" /> : <Save className="mr-2 size-4" />}
+              {saving ? 'Guardando...' : 'Guardar Cambios'}
             </Button>
           </CardContent>
         </Card>

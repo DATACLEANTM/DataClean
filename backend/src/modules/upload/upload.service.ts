@@ -27,6 +27,7 @@ export class UploadService {
                 originalName: file.originalname,
                 size: file.size,
                 rowCount,
+                columns,
                 userId,
             },
         });
@@ -37,7 +38,7 @@ export class UploadService {
             originalName: uploaded.originalName,
             size: uploaded.size,
             rowCount: uploaded.rowCount,
-            columns,
+            columns: uploaded.columns,
             uploadedAt: uploaded.uploadedAt,
         };
     }
@@ -74,8 +75,10 @@ export class UploadService {
             select: {
                 id: true,
                 originalName: true,
+                filename: true,
                 size: true,
                 rowCount: true,
+                columns: true,
                 uploadedAt: true,
             },
         });
